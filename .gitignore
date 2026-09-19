@@ -1,0 +1,22 @@
+# Backup stuff
+*~
+*.bak
+*.backup
+
+# C extensions
+*.so
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Environments
+.direnv/
+.envrc
+.venv/
+# shell.nix
+
+# Streamlit
+.streamlit/secrets.toml
