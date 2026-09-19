@@ -1,3 +1,4 @@
+import statistics
 import streamlit as st
 from cvd_risk import QRISK3, PatientData
 
@@ -12,9 +13,29 @@ with col1:
     sex = st.selectbox("Sex", ["male", "female"])
     height = st.number_input("Height (cm)", value=175.0)
     weight = st.number_input("Weight (kg)", value=75.0)
-    sbp = st.number_input("Systolic BP", min_value=70, max_value=210, value=120)
-    # TODO: implement option to just give the last n SBP readings and calculate the sbps5
-    sbps5 = st.number_input("Systolic BP Std Deviation (sbps5)", min_value=0.0, max_value=50.0, value=0.0)
+    sbp = st.number_input("Most Recent Systolic BP", min_value=70, max_value=210, value=120)
+
+    st.markdown("---")
+    st.markdown("**Serial BP Readings (sbps5)**")
+    sbp_history = st.text_input(
+        "At least 3 recent SBP readings (comma-separated) - the more the merrier",
+        placeholder="e.g. 120, 126, 112, 143, 175, 116"
+    )
+    sbps5 = 0.0
+    if sbp_history:
+        try:
+            readings = [float(x.strip()) for x in sbp_history.split(',') if x.strip()]
+            if len(readings) >= 2:
+                sbps5 = statistics.stdev(readings)
+                st.success(f"Calculated Std Dev: **{sbps5:.2f}**")
+            elif len(readings) == 1:
+                st.warning("Need at least 2 (preferably 3+) readings to calculate a standard deviation.")
+        except ValueError:
+            st.error("Please enter whole numbers between 70 and 210, separated by commas.")
+    else:
+        sbps5 = st.number_input("Or enter the sbps5 manually", min_value=0.0, max_value=50.0, value=0.0)
+    st.markdown("---")
+
     total_chol = st.number_input("Total Cholesterol (mmol/L)", min_value=2.0,max_value=12.0, value=5.0)
     hdl_chol = st.number_input("HDL Cholesterol (mmol/L)", min_value=0.5, max_value=5.0, value=1.2)
     # TODO: can we access an API or grab and parse a database to convert postcodes to depriv scores?
