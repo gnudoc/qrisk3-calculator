@@ -19,7 +19,7 @@ pkgs.mkShell {
     }:$LD_LIBRARY_PATH"
         python -m venv .venv
         source .venv/bin/activate
-        pip install streamlit cvd-risk
+        pip install streamlit cvd-risk requests pandas
         echo "Run 'streamlit run app.py' to start the qrisk3 calculator."
   '';
 }

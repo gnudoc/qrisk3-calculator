@@ -1,3 +1,5 @@
+import requests
+import pandas as pd
 import statistics
 import streamlit as st
 from cvd_risk import QRISK3, PatientData
@@ -15,7 +17,7 @@ with col1:
     weight = st.number_input("Weight (kg)", value=75.0)
     sbp = st.number_input("Most Recent Systolic BP", min_value=70, max_value=210, value=120)
 
-    st.markdown("---")
+    st.markdown("---") # Begin SBPS5
     st.markdown("**Serial BP Readings (sbps5)**")
     sbp_history = st.text_input(
         "At least 3 recent SBP readings (comma-separated) - the more the merrier",
@@ -34,12 +36,57 @@ with col1:
             st.error("Please enter whole numbers between 70 and 210, separated by commas.")
     else:
         sbps5 = st.number_input("Or enter the sbps5 manually", min_value=0.0, max_value=50.0, value=0.0)
-    st.markdown("---")
+    st.markdown("---") # End SBPS5
 
     total_chol = st.number_input("Total Cholesterol (mmol/L)", min_value=2.0,max_value=12.0, value=5.0)
     hdl_chol = st.number_input("HDL Cholesterol (mmol/L)", min_value=0.5, max_value=5.0, value=1.2)
-    # TODO: can we access an API or grab and parse a database to convert postcodes to depriv scores?
-    townsend = st.number_input("Townsend Deprivation Score", min_value=-10.0, max_value=15.0, value=0.0)
+
+    st.markdown("---") # Begin Townsend
+    st.markdown("**Townsend Score Lookup**")
+    postcode = st.text_input("UK Postcode", placeholder="e.g. G20 7ER")
+
+    # 0. We need state so the score survives button clicks
+    if 'townsend_score' not in st.session_state:
+        st.session_state.townsend_score = 0.0
+    if st.button("Lookup Score", key="lookup_townsend"):
+        if postcode:
+            try:
+                # 1. Fetch the corresponding LSOA for the postcode
+                clean_postcode = postcode.strip().replace(' ', '')
+                resp = requests.get(f"https://api.postcodes.io/postcodes/{clean_postcode}")
+                if resp.status_code == 200:
+                    data = resp.json()['result']
+                    lsoa_code = data['codes'].get('lsoa')
+                    lsoa_name = data.get('lsoa', 'Unknown')
+                    if lsoa_code:
+                        st.success(f"Found area: {lsoa_name} ({lsoa_code})")
+                    # 2. Look up the townsend score from our local csv
+                    try:
+                        df = pd.read_csv('townsend_scores_2011.csv')
+                        # try to match the 9-character code from postcodes.io
+                        match = df.loc[df['GEO_CODE'] == lsoa_code, 'TDS']
+                        # if the newer code isn't in the 2011 dataset, try the name
+                        if match.empty and lsoa_name:
+                            match = df.loc[df['GEO_LABEL'] == lsoa_name, 'TDS']
+                        if not match.empty:
+                            # what if a name matches multiple areas? Just take the first!
+                            st.session_state.townsend_score = float(match.values[0])
+                            st.success(f"Townsend Score: **{st.session_state.townsend_score:.3f}**")
+                        else:
+                            st.warning(f"LSOA code '{lsoa_code}' not found in 2011 Townsend dataset.")
+                    except FileNotFoundError:
+                        st.error("`townsend_scores_2011.csv` not in project root. Please download and extract the data.7z from gh:gnudoc/townsend_score_node_server.")
+                else:
+                    st.error("Postcode API did not return an LSOA code.")
+            except Exception as e:
+                st.error(f"Lookup failure: {e}")
+    townsend = st.number_input(
+        "Townsend Deprivation Score",
+        min_value=-10.0,
+        max_value=15.0,
+        value=st.session_state.townsend_score
+    )
+    st.markdown("---") # End Townsend
 
 with col2:
     st.header("Clinical History")
