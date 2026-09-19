@@ -8,6 +8,7 @@ pkgs.mkShell {
     python311Packages.pip
     stdenv.cc.cc.lib
     zlib
+    gh
   ];
   shellHook = ''
     export LD_LIBRARY_PATH="${
